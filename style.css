@@ -1,0 +1,955 @@
+/* ==========================================================================
+   LunaLab - Folha de Estilos (style.css)
+   Especificação 1: Visualização Interativa das Fases da Lua
+   Design System: Espacial Escuro, Glassmorphism, Alta Fidelidade Visual
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Variáveis Globais e Design Tokens
+   -------------------------------------------------------------------------- */
+:root {
+  /* Paleta Cósmica */
+  --space-void: #05070f;
+  --space-abyss: #080b18;
+  --space-deep: #0e1329;
+  --space-surface: rgba(18, 24, 48, 0.72);
+  --space-surface-hover: rgba(26, 35, 71, 0.85);
+  --space-surface-active: rgba(36, 49, 99, 0.95);
+  
+  /* Acentos de Brilho Lunar e Estelar */
+  --lunar-silver: #e8ecf8;
+  --lunar-cream: #f4f6fd;
+  --lunar-glow: rgba(220, 230, 255, 0.75);
+  --lunar-accent: #6d8eff;
+  --lunar-cyan: #38ef7d;
+  --lunar-electric: #4facfe;
+  --lunar-gold: #f6d365;
+
+  /* Bordas e Sombras de Vidro (Glassmorphism) */
+  --glass-border: rgba(140, 170, 255, 0.16);
+  --glass-border-hover: rgba(170, 200, 255, 0.35);
+  --glass-border-active: rgba(110, 160, 255, 0.75);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 3, 20, 0.6);
+  --glow-shadow: 0 0 35px rgba(100, 150, 255, 0.25);
+
+  /* Tipografia e Textos */
+  --font-display: 'Space Grotesk', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --text-primary: #f0f4ff;
+  --text-secondary: #9cb0d4;
+  --text-muted: #627499;
+
+  /* Transições Suaves */
+  --transition-fast: 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-normal: 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-slow: 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Raios de Borda */
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 22px;
+  --radius-full: 9999px;
+}
+
+/* --------------------------------------------------------------------------
+   2. Reset e Configurações Base
+   -------------------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  color-scheme: dark;
+}
+
+body {
+  font-family: var(--font-body);
+  background-color: var(--space-void);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  position: relative;
+}
+
+/* Canvas de Fundo de Estrelas */
+.stars-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Container Estrutural */
+.app-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 1.5rem 2rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  gap: 1.75rem;
+}
+
+/* --------------------------------------------------------------------------
+   3. Cabeçalho (Header)
+   -------------------------------------------------------------------------- */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.1rem 1.6rem;
+  background: var(--space-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  transition: border-color var(--transition-normal);
+}
+
+.app-header:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-icon-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, rgba(80, 120, 255, 0.25), rgba(30, 45, 95, 0.4));
+  border: 1px solid rgba(130, 170, 255, 0.3);
+  border-radius: 12px;
+}
+
+.brand-moon-icon {
+  font-size: 1.5rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 10px rgba(180, 210, 255, 0.6));
+}
+
+.brand-glow {
+  position: absolute;
+  inset: -2px;
+  background: radial-gradient(circle, rgba(100, 150, 255, 0.4) 0%, transparent 70%);
+  border-radius: inherit;
+  z-index: -1;
+  opacity: 0.6;
+}
+
+.brand-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 40%, #9cb9ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.brand-subtitle {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.header-badges {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.spec-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.45rem 0.95rem;
+  background: rgba(70, 110, 240, 0.14);
+  border: 1px solid rgba(100, 150, 255, 0.3);
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #c0d3ff;
+  letter-spacing: 0.02em;
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  background-color: #38ef7d;
+  border-radius: 50%;
+  box-shadow: 0 0 8px #38ef7d;
+  animation: pulse-dot 2s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.85); }
+}
+
+/* Seletor de Hemisfério */
+.hemisphere-selector {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: rgba(10, 15, 32, 0.7);
+  padding: 0.25rem 0.35rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+}
+
+.hemisphere-label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  padding-left: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.hemi-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 0.35rem 0.85rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.hemi-btn:hover {
+  color: var(--text-primary);
+}
+
+.hemi-btn.active {
+  background: linear-gradient(135deg, rgba(80, 120, 255, 0.35), rgba(40, 70, 180, 0.55));
+  color: #ffffff;
+  box-shadow: 0 2px 10px rgba(50, 90, 220, 0.4);
+  border: 1px solid rgba(130, 170, 255, 0.5);
+}
+
+.icon-toggle-btn {
+  background: rgba(15, 20, 42, 0.8);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-primary);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.icon-toggle-btn:hover {
+  background: rgba(30, 45, 90, 0.9);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-1px);
+}
+
+/* --------------------------------------------------------------------------
+   4. Layout Central: Exibição da Lua e Painel Informativo
+   -------------------------------------------------------------------------- */
+.main-content {
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 1.75rem;
+  align-items: stretch;
+}
+
+/* Card Palco da Lua */
+.moon-stage-card {
+  position: relative;
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 2.25rem 2rem 1.8rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: border-color var(--transition-normal);
+}
+
+.moon-stage-card:hover {
+  border-color: var(--glass-border-hover);
+}
+
+/* Corona / Aura Luminosa */
+.lunar-corona {
+  position: absolute;
+  top: 42%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(160, 200, 255, 0.22) 0%, rgba(80, 130, 255, 0.08) 50%, transparent 75%);
+  filter: blur(35px);
+  pointer-events: none;
+  transition: all var(--transition-slow);
+  z-index: 1;
+}
+
+/* Canvas da Lua */
+.moon-canvas-container {
+  position: relative;
+  z-index: 2;
+  width: 360px;
+  height: 360px;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0.5rem auto 1.5rem;
+  cursor: grab;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.moon-canvas-container:active {
+  cursor: grabbing;
+}
+
+#moon-main-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
+  filter: drop-shadow(0 0 35px rgba(120, 160, 255, 0.3));
+  transition: filter var(--transition-normal);
+}
+
+/* Indicador de Direção Solar */
+.sunlight-direction-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  background: rgba(10, 15, 30, 0.75);
+  border: 1px solid rgba(255, 215, 0, 0.25);
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #ffd875;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+  transition: all var(--transition-normal);
+}
+
+/* Controles de Navegação no Palco */
+.stage-nav-controls {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.85rem;
+  width: 100%;
+  margin-bottom: 1.25rem;
+}
+
+.nav-arrow-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(18, 25, 52, 0.85);
+  border: 1px solid var(--glass-border);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.6rem 1.1rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.nav-arrow-btn:hover {
+  background: rgba(35, 50, 105, 0.95);
+  border-color: var(--glass-border-active);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 18px rgba(40, 80, 220, 0.3);
+}
+
+.autoplay-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(135deg, rgba(50, 80, 180, 0.4), rgba(30, 50, 120, 0.5));
+  border: 1px solid rgba(120, 160, 255, 0.35);
+  color: #ffffff;
+  font-family: var(--font-body);
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 0.6rem 1.25rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.autoplay-btn:hover {
+  background: linear-gradient(135deg, rgba(70, 110, 230, 0.6), rgba(40, 75, 170, 0.7));
+  border-color: rgba(160, 200, 255, 0.6);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(60, 110, 255, 0.4);
+}
+
+.autoplay-btn.playing {
+  background: linear-gradient(135deg, rgba(230, 90, 90, 0.4), rgba(180, 50, 50, 0.6));
+  border-color: rgba(255, 120, 120, 0.6);
+  box-shadow: 0 4px 20px rgba(255, 80, 80, 0.35);
+}
+
+/* Indicadores de Rápida Leitura */
+.stage-quick-metrics {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr auto 1fr;
+  align-items: center;
+  background: rgba(10, 14, 30, 0.6);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.85rem 1.2rem;
+  backdrop-filter: blur(10px);
+}
+
+.quick-metric-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.metric-caption {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  margin-bottom: 0.15rem;
+}
+
+.metric-highlight {
+  font-family: var(--font-display);
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #eaf0ff;
+  letter-spacing: -0.01em;
+}
+
+.quick-metric-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--glass-border);
+}
+
+/* --------------------------------------------------------------------------
+   5. Painel Informativo da Fase (RF04)
+   -------------------------------------------------------------------------- */
+.phase-info-section {
+  display: flex;
+}
+
+.info-card {
+  width: 100%;
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 2.25rem 2.25rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+  transition: border-color var(--transition-normal);
+}
+
+.info-card:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.info-card-header {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  border-bottom: 1px solid rgba(140, 170, 255, 0.12);
+  padding-bottom: 1.1rem;
+}
+
+.phase-order-pill {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.2rem;
+}
+
+#phase-index-display {
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--lunar-accent);
+  text-transform: uppercase;
+}
+
+.phase-cycle-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.2rem 0.6rem;
+  border-radius: var(--radius-full);
+}
+
+.phase-main-title {
+  font-family: var(--font-display);
+  font-size: 2.15rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+}
+
+.phase-alt-title {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.phase-summary-box {
+  background: rgba(60, 95, 200, 0.12);
+  border-left: 3px solid var(--lunar-accent);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 0.85rem 1.1rem;
+}
+
+.phase-summary-text {
+  font-size: 0.94rem;
+  color: #d6e2ff;
+  line-height: 1.55;
+  font-weight: 500;
+}
+
+.info-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.info-section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 0.96rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: 0.02em;
+}
+
+.info-body-text {
+  font-size: 0.92rem;
+  color: var(--text-secondary);
+  line-height: 1.65;
+}
+
+/* Grade de Parâmetros Técnicos */
+.parameters-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.param-box {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  background: rgba(12, 17, 36, 0.65);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 0.95rem;
+  transition: all var(--transition-fast);
+}
+
+.param-box:hover {
+  background: rgba(20, 28, 58, 0.8);
+  border-color: rgba(140, 180, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.param-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.param-data {
+  display: flex;
+  flex-direction: column;
+}
+
+.param-title {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+}
+
+.param-value {
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #f2f5ff;
+}
+
+/* Caixa de Curiosidade */
+.curiosity-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: linear-gradient(135deg, rgba(246, 211, 101, 0.08), rgba(253, 160, 133, 0.05));
+  border: 1px solid rgba(246, 211, 101, 0.25);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.1rem;
+  margin-top: auto;
+}
+
+.curiosity-icon {
+  font-size: 1.25rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px rgba(246, 211, 101, 0.5));
+}
+
+.curiosity-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.curiosity-title {
+  font-family: var(--font-display);
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #ffd875;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.curiosity-text {
+  font-size: 0.85rem;
+  color: #e5ebfc;
+  line-height: 1.5;
+}
+
+/* --------------------------------------------------------------------------
+   6. Trilho Seletor das Oito Fases (RF01 e RF03)
+   -------------------------------------------------------------------------- */
+.phases-navigation-container {
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 1.4rem 1.6rem 1.6rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+}
+
+.nav-bar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.nav-bar-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.nav-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.phases-rail {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 0.85rem;
+  width: 100%;
+}
+
+/* Card/Botão Interativo de Cada Fase */
+.phase-card-btn {
+  background: rgba(14, 19, 40, 0.7);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 0.6rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  position: relative;
+  overflow: hidden;
+  text-align: center;
+}
+
+.phase-card-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: transparent;
+  transition: background var(--transition-fast);
+}
+
+.phase-card-btn:hover {
+  background: rgba(28, 38, 78, 0.85);
+  border-color: var(--glass-border-hover);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.phase-card-btn.active {
+  background: linear-gradient(180deg, rgba(35, 50, 110, 0.75) 0%, rgba(18, 25, 55, 0.9) 100%);
+  border-color: var(--glass-border-active);
+  box-shadow: 0 0 25px rgba(80, 130, 255, 0.35);
+  transform: translateY(-2px);
+}
+
+.phase-card-btn.active::before {
+  background: linear-gradient(90deg, #38ef7d, #4facfe, #6d8eff);
+}
+
+/* Miniatura da Lua no Botão */
+.phase-thumb-wrapper {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phase-thumb-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
+  transition: transform var(--transition-fast);
+}
+
+.phase-card-btn:hover .phase-thumb-canvas {
+  transform: scale(1.08);
+}
+
+.phase-card-btn.active .phase-thumb-canvas {
+  filter: drop-shadow(0 0 10px rgba(130, 180, 255, 0.7));
+}
+
+.phase-card-order {
+  font-family: var(--font-display);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+.phase-card-btn.active .phase-card-order {
+  color: var(--lunar-accent);
+}
+
+.phase-card-name {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #e0e7ff;
+  line-height: 1.25;
+  min-height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.phase-card-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.15rem 0.45rem;
+  border-radius: var(--radius-full);
+}
+
+.phase-card-btn.active .phase-card-badge {
+  background: rgba(79, 172, 254, 0.25);
+  color: #8acaff;
+}
+
+/* --------------------------------------------------------------------------
+   7. Rodapé (Footer)
+   -------------------------------------------------------------------------- */
+.app-footer {
+  margin-top: auto;
+  padding: 1.1rem 1.6rem;
+  background: var(--space-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.footer-status {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.footer-status strong {
+  color: #ffffff;
+  font-family: var(--font-display);
+}
+
+.footer-keyboard-hint {
+  font-size: 0.76rem;
+  color: var(--text-muted);
+}
+
+kbd {
+  display: inline-block;
+  padding: 0.1rem 0.4rem;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #d8e2ff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* --------------------------------------------------------------------------
+   8. Responsividade (Mobile & Tablet)
+   -------------------------------------------------------------------------- */
+@media (max-width: 1200px) {
+  .phases-rail {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+@media (max-width: 992px) {
+  .main-content {
+    grid-template-columns: 1fr;
+  }
+
+  .moon-canvas-container {
+    width: 300px;
+    height: 300px;
+  }
+
+  .lunar-corona {
+    width: 320px;
+    height: 320px;
+  }
+}
+
+@media (max-width: 768px) {
+  .app-container {
+    padding: 1rem 0.85rem 1.5rem;
+    gap: 1.25rem;
+  }
+
+  .app-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.85rem;
+  }
+
+  .header-badges {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .parameters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .phases-rail {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stage-quick-metrics {
+    grid-template-columns: 1fr;
+    gap: 0.6rem;
+  }
+
+  .quick-metric-divider {
+    display: none;
+  }
+
+  .moon-canvas-container {
+    width: 250px;
+    height: 250px;
+  }
+
+  .phase-main-title {
+    font-size: 1.75rem;
+  }
+}
