@@ -1,6 +1,7 @@
 /* ==========================================================================
    LunaLab - Folha de Estilos (style.css)
-   Especificação 1: Visualização Interativa das Fases da Lua
+   Especificação 1: Visualização Interativa das Fases da Lua (RF01 - RF04)
+   Especificação 2: Simulação Interativa do Ciclo Lunar (RF05 - RF08)
    Design System: Espacial Escuro, Glassmorphism, Alta Fidelidade Visual
    ========================================================================== */
 
@@ -24,6 +25,8 @@
   --lunar-cyan: #38ef7d;
   --lunar-electric: #4facfe;
   --lunar-gold: #f6d365;
+  --lunar-amber: #f39c12;
+  --lunar-emerald: #2ecc71;
 
   /* Bordas e Sombras de Vidro (Glassmorphism) */
   --glass-border: rgba(140, 170, 255, 0.16);
@@ -103,7 +106,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   3. Cabeçalho (Header)
+   3. Cabeçalho (Header) & Abas de Navegação
    -------------------------------------------------------------------------- */
 .app-header {
   display: flex;
@@ -117,6 +120,8 @@ body {
   border-radius: var(--radius-lg);
   box-shadow: var(--glass-shadow);
   transition: border-color var(--transition-normal);
+  gap: 1.25rem;
+  flex-wrap: wrap;
 }
 
 .app-header:hover {
@@ -174,39 +179,54 @@ body {
   text-transform: uppercase;
 }
 
+/* Abas de Navegação entre Módulos */
+.view-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(10, 15, 34, 0.75);
+  padding: 0.35rem 0.45rem;
+  border-radius: var(--radius-full);
+  border: 1px solid var(--glass-border);
+}
+
+.tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 600;
+  padding: 0.55rem 1.15rem;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.tab-btn:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tab-btn.active {
+  background: linear-gradient(135deg, rgba(80, 120, 255, 0.4), rgba(40, 70, 190, 0.6));
+  color: #ffffff;
+  border-color: rgba(140, 180, 255, 0.55);
+  box-shadow: 0 4px 18px rgba(50, 90, 220, 0.45);
+}
+
+.tab-icon {
+  font-size: 1rem;
+}
+
 .header-badges {
   display: flex;
   align-items: center;
   gap: 1rem;
   flex-wrap: wrap;
-}
-
-.spec-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.45rem 0.95rem;
-  background: rgba(70, 110, 240, 0.14);
-  border: 1px solid rgba(100, 150, 255, 0.3);
-  border-radius: var(--radius-full);
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #c0d3ff;
-  letter-spacing: 0.02em;
-}
-
-.badge-dot {
-  width: 7px;
-  height: 7px;
-  background-color: #38ef7d;
-  border-radius: 50%;
-  box-shadow: 0 0 8px #38ef7d;
-  animation: pulse-dot 2s infinite ease-in-out;
-}
-
-@keyframes pulse-dot {
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(0.85); }
 }
 
 /* Seletor de Hemisfério */
@@ -274,13 +294,30 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   4. Layout Central: Exibição da Lua e Painel Informativo
+   4. Gerenciamento de Módulos / Abas (Spec 1 vs Spec 2)
+   -------------------------------------------------------------------------- */
+.module-view {
+  display: none;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.module-view.active {
+  display: block;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* --------------------------------------------------------------------------
+   5. Módulo 1 (Spec 1): Visualização Interativa das Fases
    -------------------------------------------------------------------------- */
 .main-content {
   display: grid;
   grid-template-columns: 1.15fr 1fr;
   gap: 1.75rem;
   align-items: stretch;
+  margin-bottom: 1.75rem;
 }
 
 /* Card Palco da Lua */
@@ -480,9 +517,7 @@ body {
   background: var(--glass-border);
 }
 
-/* --------------------------------------------------------------------------
-   5. Painel Informativo da Fase (RF04)
-   -------------------------------------------------------------------------- */
+/* Painel Informativo da Fase (RF04) */
 .phase-info-section {
   display: flex;
 }
@@ -680,9 +715,7 @@ body {
   line-height: 1.5;
 }
 
-/* --------------------------------------------------------------------------
-   6. Trilho Seletor das Oito Fases (RF01 e RF03)
-   -------------------------------------------------------------------------- */
+/* Trilho Seletor das Oito Fases (RF01 e RF03) */
 .phases-navigation-container {
   background: var(--space-surface);
   backdrop-filter: blur(20px);
@@ -726,7 +759,6 @@ body {
   width: 100%;
 }
 
-/* Card/Botão Interativo de Cada Fase */
 .phase-card-btn {
   background: rgba(14, 19, 40, 0.7);
   border: 1px solid var(--glass-border);
@@ -772,7 +804,6 @@ body {
   background: linear-gradient(90deg, #38ef7d, #4facfe, #6d8eff);
 }
 
-/* Miniatura da Lua no Botão */
 .phase-thumb-wrapper {
   position: relative;
   width: 52px;
@@ -838,6 +869,502 @@ body {
 }
 
 /* --------------------------------------------------------------------------
+   6. Módulo 2 (Spec 2): Simulador do Ciclo Lunar (RF05 - RF08)
+   -------------------------------------------------------------------------- */
+.simulator-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.sim-header-banner {
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  padding: 1.25rem 1.8rem;
+  box-shadow: var(--glass-shadow);
+}
+
+.sim-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.sim-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(56, 239, 125, 0.12);
+  border: 1px solid rgba(56, 239, 125, 0.3);
+  border-radius: var(--radius-full);
+  padding: 0.3rem 0.85rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #72f79f;
+  width: fit-content;
+}
+
+.pulse-sim {
+  background-color: #38ef7d;
+  box-shadow: 0 0 8px #38ef7d;
+}
+
+.sim-section-heading {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  background: linear-gradient(135deg, #ffffff 30%, #b8d2ff 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.sim-section-subheading {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+/* Grid Principal do Simulador */
+.simulator-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.08fr;
+  gap: 1.75rem;
+  align-items: stretch;
+}
+
+/* Palco da Lua na Simulação (RF05) */
+.sim-stage-card {
+  position: relative;
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 2.25rem 2rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  overflow: hidden;
+  transition: border-color var(--transition-normal);
+}
+
+.sim-stage-card:hover {
+  border-color: var(--glass-border-hover);
+}
+
+.sim-lunar-corona {
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 380px;
+  height: 380px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(160, 200, 255, 0.25) 0%, rgba(80, 130, 255, 0.08) 50%, transparent 75%);
+  filter: blur(35px);
+  pointer-events: none;
+  transition: all var(--transition-normal);
+  z-index: 1;
+}
+
+.sim-canvas-wrapper {
+  position: relative;
+  z-index: 2;
+  width: 360px;
+  height: 360px;
+  max-width: 100%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 1rem auto;
+}
+
+#sim-moon-canvas {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: block;
+  filter: drop-shadow(0 0 35px rgba(120, 160, 255, 0.35));
+  transition: filter var(--transition-normal);
+}
+
+.sim-phase-indicator {
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  text-align: center;
+  background: rgba(10, 15, 34, 0.65);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.9rem 1.25rem;
+  backdrop-filter: blur(12px);
+}
+
+.sim-phase-label {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.sim-phase-name {
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+  margin-top: 0.15rem;
+  transition: color var(--transition-fast);
+}
+
+/* Painel de Controles do Simulador */
+.sim-controls-panel {
+  display: flex;
+}
+
+.sim-card {
+  width: 100%;
+  background: var(--space-surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  padding: 2rem 2.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.35rem;
+}
+
+/* Contador de Dias (RF07) */
+.sim-counter-card {
+  background: linear-gradient(135deg, rgba(30, 45, 95, 0.55), rgba(15, 20, 45, 0.75));
+  border: 1px solid rgba(130, 170, 255, 0.25);
+  border-radius: var(--radius-md);
+  padding: 1.2rem 1.4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+
+.sim-counter-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, #38ef7d, #4facfe, #6d8eff);
+}
+
+.counter-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.35rem;
+}
+
+.counter-label {
+  font-size: 0.74rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.counter-percent-tag {
+  font-family: var(--font-display);
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--lunar-cyan);
+  background: rgba(56, 239, 125, 0.12);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+}
+
+.sim-day-display {
+  font-family: var(--font-display);
+  font-size: 2.35rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: #ffffff;
+  text-shadow: 0 0 25px rgba(100, 150, 255, 0.4);
+  line-height: 1.2;
+  margin: 0.25rem 0;
+}
+
+.sim-illumination-subtext {
+  font-size: 0.88rem;
+  color: var(--text-secondary);
+}
+
+.sim-illumination-subtext strong {
+  color: var(--lunar-electric);
+  font-family: var(--font-display);
+}
+
+/* Barra de Progresso do Ciclo */
+.sim-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.progress-bar-container {
+  position: relative;
+  width: 100%;
+  height: 10px;
+  background: rgba(10, 15, 34, 0.85);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-full);
+  overflow: visible;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #38ef7d, #4facfe 50%, #a18cd1 100%);
+  border-radius: var(--radius-full);
+  box-shadow: 0 0 14px rgba(79, 172, 254, 0.6);
+  transition: width 0.08s linear;
+}
+
+/* Marcadores na Barra de Progresso */
+.progress-marker {
+  position: absolute;
+  top: -3px;
+  width: 4px;
+  height: 16px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+.marker-0 { left: 0%; }
+.marker-25 { left: 25%; }
+.marker-50 { left: 50%; }
+.marker-75 { left: 75%; }
+
+.progress-markers-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  padding: 0 2px;
+}
+
+/* Botões de Ação da Simulação (RF06) */
+.sim-actions-group {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.sim-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sim-ctrl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+/* Botão Iniciar */
+.btn-play {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.3), rgba(39, 174, 96, 0.5));
+  border-color: rgba(46, 204, 113, 0.6);
+  color: #ffffff;
+}
+
+.btn-play:not(:disabled):hover {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.45), rgba(39, 174, 96, 0.7));
+  border-color: rgba(72, 239, 145, 0.85);
+  box-shadow: 0 4px 20px rgba(46, 204, 113, 0.4);
+  transform: translateY(-2px);
+}
+
+/* Botão Pausar */
+.btn-pause {
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.25), rgba(230, 126, 34, 0.45));
+  border-color: rgba(243, 156, 18, 0.5);
+  color: #ffdca8;
+}
+
+.btn-pause:not(:disabled):hover {
+  background: linear-gradient(135deg, rgba(243, 156, 18, 0.4), rgba(230, 126, 34, 0.6));
+  border-color: rgba(243, 156, 18, 0.8);
+  box-shadow: 0 4px 20px rgba(243, 156, 18, 0.35);
+  transform: translateY(-2px);
+}
+
+/* Botão Reiniciar */
+.btn-reset {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.25), rgba(41, 128, 185, 0.45));
+  border-color: rgba(52, 152, 219, 0.5);
+  color: #cce7ff;
+}
+
+.btn-reset:not(:disabled):hover {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.4), rgba(41, 128, 185, 0.65));
+  border-color: rgba(52, 152, 219, 0.8);
+  box-shadow: 0 4px 20px rgba(52, 152, 219, 0.35);
+  transform: translateY(-2px);
+}
+
+.ctrl-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* Controle de Velocidade (RF08) */
+.speed-control-box {
+  background: rgba(12, 17, 36, 0.65);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.speed-control-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.speed-title {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.speed-current-badge {
+  font-family: var(--font-display);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--lunar-electric);
+}
+
+.speed-buttons-group {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+}
+
+.speed-pill-btn {
+  background: rgba(18, 25, 52, 0.85);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-display);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0.55rem 0.35rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  transition: all var(--transition-fast);
+}
+
+.speed-pill-btn .speed-desc {
+  font-size: 0.62rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.speed-pill-btn:hover {
+  background: rgba(30, 42, 88, 0.95);
+  color: var(--text-primary);
+  border-color: var(--glass-border-hover);
+}
+
+.speed-pill-btn.active {
+  background: linear-gradient(135deg, rgba(80, 120, 255, 0.45), rgba(40, 70, 190, 0.65));
+  border-color: rgba(140, 180, 255, 0.7);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(70, 120, 255, 0.4);
+}
+
+.speed-pill-btn.active .speed-desc {
+  color: #c9dbff;
+}
+
+/* Card Educativo */
+.sim-education-box {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: linear-gradient(135deg, rgba(109, 142, 255, 0.08), rgba(56, 239, 125, 0.05));
+  border: 1px solid rgba(109, 142, 255, 0.22);
+  border-radius: var(--radius-md);
+  padding: 0.95rem 1.15rem;
+  margin-top: auto;
+}
+
+.edu-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.edu-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.edu-title {
+  font-family: var(--font-display);
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: #b5caff;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.edu-text {
+  font-size: 0.84rem;
+  color: #d6e2fc;
+  line-height: 1.55;
+}
+
+.edu-text strong {
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
    7. Rodapé (Footer)
    -------------------------------------------------------------------------- */
 .app-footer {
@@ -892,6 +1419,10 @@ kbd {
   .phases-rail {
     grid-template-columns: repeat(4, 1fr);
   }
+
+  .simulator-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 992px) {
@@ -899,12 +1430,14 @@ kbd {
     grid-template-columns: 1fr;
   }
 
-  .moon-canvas-container {
+  .moon-canvas-container,
+  .sim-canvas-wrapper {
     width: 300px;
     height: 300px;
   }
 
-  .lunar-corona {
+  .lunar-corona,
+  .sim-lunar-corona {
     width: 320px;
     height: 320px;
   }
@@ -920,6 +1453,11 @@ kbd {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.85rem;
+  }
+
+  .view-tabs {
+    width: 100%;
+    justify-content: center;
   }
 
   .header-badges {
@@ -944,12 +1482,21 @@ kbd {
     display: none;
   }
 
-  .moon-canvas-container {
+  .moon-canvas-container,
+  .sim-canvas-wrapper {
     width: 250px;
     height: 250px;
   }
 
   .phase-main-title {
     font-size: 1.75rem;
+  }
+
+  .sim-actions-group {
+    grid-template-columns: 1fr;
+  }
+
+  .speed-buttons-group {
+    grid-template-columns: repeat(2, 1fr);
   }
 }

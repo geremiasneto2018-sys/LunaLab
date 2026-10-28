@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LunaLab • Visualização Interativa das Fases da Lua</title>
-  <meta name="description" content="Laboratório astronômico interativo para exploração científica e visualização das oito fases da Lua. Desenvolvido com HTML5, CSS3 e JavaScript puro.">
+  <title>LunaLab • Laboratório Astronômico Lunar</title>
+  <meta name="description" content="Laboratório astronômico interativo para exploração científica das fases da Lua e simulação do ciclo lunar sinódico (~29,5 dias). Desenvolvido com HTML5, CSS3 e JavaScript puro.">
   
   <!-- Fontes Google Modernas -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -32,12 +32,19 @@
         </div>
       </div>
 
-      <div class="header-badges">
-        <span class="spec-badge" title="Etapa de desenvolvimento atual">
-          <span class="badge-dot"></span>
-          Especificação 1: Fases da Lua
-        </span>
+      <!-- Abas de Navegação entre Especificações -->
+      <nav class="view-tabs" role="tablist" aria-label="Módulos do Laboratório">
+        <button id="tab-btn-viewer" class="tab-btn active" role="tab" aria-selected="true" aria-controls="view-viewer" type="button">
+          <span class="tab-icon">🌔</span>
+          <span class="tab-text">Fases da Lua (Spec 1)</span>
+        </button>
+        <button id="tab-btn-simulator" class="tab-btn" role="tab" aria-selected="false" aria-controls="view-simulator" type="button">
+          <span class="tab-icon">⏱️</span>
+          <span class="tab-text">Simulador do Ciclo (Spec 2)</span>
+        </button>
+      </nav>
 
+      <div class="header-badges">
         <!-- Seletor de Hemisfério (Crucial para representação astronômica correta) -->
         <div class="hemisphere-selector" title="Alternar ponto de vista astronômico">
           <span class="hemisphere-label">Hemisfério:</span>
@@ -56,166 +63,303 @@
       </div>
     </header>
 
-    <!-- Conteúdo Central: Exibição Principal da Lua e Painel Informativo -->
-    <main class="main-content">
-      <!-- Seção Visual Central: Lua em Alta Definição -->
-      <section class="moon-display-section" aria-label="Visualização da Lua">
-        <div class="moon-stage-card">
-          <!-- Brilho Atmosférico Cósmico ao Redor da Lua -->
-          <div class="lunar-corona" id="lunar-corona"></div>
+    <!-- ======================================================================
+         MÓDULO 1: ESPECIFICAÇÃO 1 — VISUALIZAÇÃO INTERATIVA DAS FASES DA LUA
+         (Preservada integralmente com RF01, RF02, RF03 e RF04)
+         ====================================================================== -->
+    <div id="view-viewer" class="module-view active" role="tabpanel" aria-labelledby="tab-btn-viewer">
+      <!-- Conteúdo Central: Exibição Principal da Lua e Painel Informativo -->
+      <main class="main-content">
+        <!-- Seção Visual Central: Lua em Alta Definição -->
+        <section class="moon-display-section" aria-label="Visualização da Lua">
+          <div class="moon-stage-card">
+            <!-- Brilho Atmosférico Cósmico ao Redor da Lua -->
+            <div class="lunar-corona" id="lunar-corona"></div>
 
-          <!-- Canvas da Lua Renderizada com Superfície e Terminador Físico -->
-          <div class="moon-canvas-container" id="moon-canvas-wrapper">
-            <canvas id="moon-main-canvas" width="600" height="600" aria-label="Representação visual da fase lunar selecionada"></canvas>
-            <!-- Overlay com indicador de ângulo de iluminação -->
-            <div class="sunlight-direction-badge" id="sunlight-direction" title="Direção da luz solar">
-              <span class="sun-arrow">☀️</span>
-              <span class="sun-text">Luz Solar</span>
+            <!-- Canvas da Lua Renderizada com Superfície e Terminador Físico -->
+            <div class="moon-canvas-container" id="moon-canvas-wrapper">
+              <canvas id="moon-main-canvas" width="600" height="600" aria-label="Representação visual da fase lunar selecionada"></canvas>
+              <!-- Overlay com indicador de ângulo de iluminação -->
+              <div class="sunlight-direction-badge" id="sunlight-direction" title="Direção da luz solar">
+                <span class="sun-arrow">☀️</span>
+                <span class="sun-text">Luz Solar</span>
+              </div>
+            </div>
+
+            <!-- Controles Rápidos de Navegação Flutuantes -->
+            <div class="stage-nav-controls">
+              <button id="btn-prev-phase" class="nav-arrow-btn" type="button" aria-label="Fase anterior (Seta para a esquerda)">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
+                <span>Anterior</span>
+              </button>
+
+              <!-- Botão de Ciclo Automático -->
+              <button id="btn-autoplay" class="autoplay-btn" type="button" aria-label="Reproduzir ciclo lunar automaticamente">
+                <span id="autoplay-icon">▶</span>
+                <span id="autoplay-text">Ciclo Contínuo</span>
+              </button>
+
+              <button id="btn-next-phase" class="nav-arrow-btn" type="button" aria-label="Próxima fase (Seta para a direita)">
+                <span>Próxima</span>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+              </button>
+            </div>
+
+            <!-- Indicadores de Rápida Leitura -->
+            <div class="stage-quick-metrics">
+              <div class="quick-metric-item">
+                <span class="metric-caption">Iluminação Visível</span>
+                <span class="metric-highlight" id="quick-illumination">0%</span>
+              </div>
+              <div class="quick-metric-divider"></div>
+              <div class="quick-metric-item">
+                <span class="metric-caption">Idade da Lunação</span>
+                <span class="metric-highlight" id="quick-age">0.0 dias</span>
+              </div>
+              <div class="quick-metric-divider"></div>
+              <div class="quick-metric-item">
+                <span class="metric-caption">Geometria Orbital</span>
+                <span class="metric-highlight" id="quick-elongation">0° (Conjunção)</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Painel Informativo Detalhado (RF04) -->
+        <section class="phase-info-section" aria-label="Detalhes e Descrição da Fase Selecionada">
+          <article class="glass-card info-card">
+            <!-- Cabeçalho do Card Informativo -->
+            <header class="info-card-header">
+              <div class="phase-order-pill">
+                <span id="phase-index-display">FASE 1 DE 8</span>
+                <span class="phase-cycle-tag" id="phase-cycle-tag">Ciclo Sinódico</span>
+              </div>
+              <h2 class="phase-main-title" id="phase-title">Lua Nova</h2>
+              <p class="phase-alt-title" id="phase-intl-title">New Moon • Novilúnio</p>
+            </header>
+
+            <!-- Resumo de Destaque -->
+            <div class="phase-summary-box">
+              <p class="phase-summary-text" id="phase-summary">
+                A Lua encontra-se alinhada entre a Terra e o Sol. Sua face iluminada está voltada na direção oposta ao nosso planeta, tornando-a invisível no céu noturno.
+              </p>
+            </div>
+
+            <!-- Descrição Astronômica Detalhada -->
+            <div class="info-block">
+              <h3 class="info-section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                Mecânica Celeste & Observação
+              </h3>
+              <p class="info-body-text" id="phase-description">
+                Durante esta fase, a Lua nasce e se põe quase simultaneamente com o Sol, cruzando a abóbada celeste durante as horas de claridade diurna. Como o plano orbital lunar é inclinado cerca de 5° em relação ao plano orbital terrestre (a eclíptica), a Lua quase sempre passa ligeiramente acima ou abaixo do Sol. Quando o alinhamento coincide perfeitamente com a linha dos nodos, ocorre um eclipse solar.
+              </p>
+            </div>
+
+            <!-- Grade de Parâmetros Técnicos / Efemérides -->
+            <div class="parameters-grid">
+              <div class="param-box">
+                <div class="param-icon">☀️</div>
+                <div class="param-data">
+                  <span class="param-title">Horário de Nascer</span>
+                  <span class="param-value" id="param-rise">~06:00 (Amanhecer)</span>
+                </div>
+              </div>
+
+              <div class="param-box">
+                <div class="param-icon">🌙</div>
+                <div class="param-data">
+                  <span class="param-title">Horário de Pôr</span>
+                  <span class="param-value" id="param-set">~18:00 (Entardecer)</span>
+                </div>
+              </div>
+
+              <div class="param-box">
+                <div class="param-icon">🔭</div>
+                <div class="param-data">
+                  <span class="param-title">Melhor Visibilidade</span>
+                  <span class="param-value" id="param-visibility">Invisível a olho nu</span>
+                </div>
+              </div>
+
+              <div class="param-box">
+                <div class="param-icon">🧭</div>
+                <div class="param-data">
+                  <span class="param-title">Próxima Fase</span>
+                  <span class="param-value" id="param-next-phase">Lua Crescente</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Curiosidade Científica Especial -->
+            <div class="curiosity-box">
+              <div class="curiosity-icon">💡</div>
+              <div class="curiosity-content">
+                <h4 class="curiosity-title">Curiosidade Astronômica</h4>
+                <p class="curiosity-text" id="phase-curiosity">
+                  Apenas durante a Lua Nova é possível presenciar eclipses solares totais ou parciais, quando o cone de sombra lunar varre a superfície terrestre.
+                </p>
+              </div>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <!-- Trilho de Seleção Interativa das Oito Fases (RF01 e RF03) -->
+      <nav class="phases-navigation-container" aria-label="Seletor das Oito Fases Lunares">
+        <div class="nav-bar-header">
+          <h3 class="nav-bar-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"></path></svg>
+            Ciclo Completo das Oito Fases Lunares
+          </h3>
+          <span class="nav-hint">Selecione uma fase clicando nos botões ou usando as teclas 1 a 8</span>
+        </div>
+
+        <div class="phases-rail" id="phases-button-container" role="tablist">
+          <!-- Os 8 botões interativos com miniaturas precisas são gerados dinamicamente via script.js -->
+        </div>
+      </nav>
+    </div>
+
+    <!-- ======================================================================
+         MÓDULO 2: ESPECIFICAÇÃO 2 — SIMULADOR DO CICLO LUNAR
+         (RF05: Simulação animada, RF06: Controles, RF07: Contador, RF08: Velocidade)
+         ====================================================================== -->
+    <div id="view-simulator" class="module-view" role="tabpanel" aria-labelledby="tab-btn-simulator">
+      <section class="simulator-section" aria-label="Simulador do Ciclo Lunar">
+        <!-- Cabeçalho do Simulador -->
+        <div class="sim-header-banner">
+          <div class="sim-title-group">
+            <span class="sim-badge">
+              <span class="badge-dot pulse-sim"></span>
+              Especificação 2 • Simulação em Tempo Real
+            </span>
+            <h2 class="sim-section-heading">Simulador do Ciclo Lunar</h2>
+            <p class="sim-section-subheading">
+              Demonstração contínua da evolução orbital e da variação de iluminação ao longo de um mês sinódico (~29,5 dias).
+            </p>
+          </div>
+        </div>
+
+        <div class="simulator-grid">
+          <!-- Palco Visual da Simulação (RF05) -->
+          <div class="sim-stage-card">
+            <div class="sim-lunar-corona" id="sim-lunar-corona"></div>
+
+            <div class="sim-canvas-wrapper" id="sim-canvas-wrapper">
+              <!-- Reutilização da renderização lunar precisa da Spec 1 -->
+              <canvas id="sim-moon-canvas" width="600" height="600" aria-label="Simulação animada da iluminação lunar"></canvas>
+              <div class="sunlight-direction-badge" id="sim-sunlight-direction" title="Direção da luz solar na simulação">
+                <span class="sun-arrow">☀️</span>
+                <span class="sun-text" id="sim-sun-text">Luz Solar</span>
+              </div>
+            </div>
+
+            <!-- Identificação Dinâmica da Fase Atual na Simulação -->
+            <div class="sim-phase-indicator">
+              <span class="sim-phase-label">FASE ATUAL DO CICLO:</span>
+              <h3 class="sim-phase-name" id="sim-current-phase-name">Lua Nova</h3>
             </div>
           </div>
 
-          <!-- Controles Rápidos de Navegação Flutuantes -->
-          <div class="stage-nav-controls">
-            <button id="btn-prev-phase" class="nav-arrow-btn" type="button" aria-label="Fase anterior (Seta para a esquerda)">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"></polyline></svg>
-              <span>Anterior</span>
-            </button>
+          <!-- Painel de Controles, Métricas e Barra de Progresso (RF06, RF07, RF08) -->
+          <div class="sim-controls-panel">
+            <div class="glass-card sim-card">
+              <!-- Contador de Dias do Ciclo (RF07) -->
+              <div class="sim-counter-card">
+                <div class="counter-header">
+                  <span class="counter-label">Progresso do Ciclo Sinódico</span>
+                  <span class="counter-percent-tag" id="sim-percent-tag">0.0% do Ciclo</span>
+                </div>
+                <div class="sim-day-display" id="sim-day-display" aria-live="polite">
+                  Dia 0,0 de 29,5
+                </div>
+                <div class="sim-illumination-subtext" id="sim-illumination-display">
+                  Iluminação Atual: <strong>0.0%</strong>
+                </div>
+              </div>
 
-            <!-- Botão de Ciclo Automático -->
-            <button id="btn-autoplay" class="autoplay-btn" type="button" aria-label="Reproduzir ciclo lunar automaticamente">
-              <span id="autoplay-icon">▶</span>
-              <span id="autoplay-text">Ciclo Contínuo</span>
-            </button>
+              <!-- Barra de Progresso do Ciclo Lunar -->
+              <div class="sim-progress-block">
+                <div class="progress-bar-container" id="sim-progress-track" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="29.5" aria-label="Progresso da simulação lunar">
+                  <div class="progress-bar-fill" id="sim-progress-fill"></div>
+                  <!-- Marcadores de Fases Principais -->
+                  <div class="progress-marker marker-0" title="Dia 0: Lua Nova"></div>
+                  <div class="progress-marker marker-25" title="Dia 7.4: Quarto Crescente"></div>
+                  <div class="progress-marker marker-50" title="Dia 14.8: Lua Cheia"></div>
+                  <div class="progress-marker marker-75" title="Dia 22.1: Quarto Minguante"></div>
+                </div>
+                <div class="progress-markers-labels">
+                  <span>Nova</span>
+                  <span>Quarto Cresc.</span>
+                  <span>Cheia</span>
+                  <span>Quarto Ming.</span>
+                  <span>Nova</span>
+                </div>
+              </div>
 
-            <button id="btn-next-phase" class="nav-arrow-btn" type="button" aria-label="Próxima fase (Seta para a direita)">
-              <span>Próxima</span>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-            </button>
-          </div>
+              <!-- Botões de Controle da Simulação: Iniciar, Pausar, Reiniciar (RF06) -->
+              <div class="sim-actions-group">
+                <button id="sim-btn-play" class="sim-ctrl-btn btn-play" type="button" aria-label="Iniciar ou retomar a simulação">
+                  <span class="ctrl-icon">▶</span>
+                  <span class="ctrl-text">Iniciar</span>
+                </button>
+                <button id="sim-btn-pause" class="sim-ctrl-btn btn-pause" type="button" aria-label="Pausar a simulação" disabled>
+                  <span class="ctrl-icon">⏸</span>
+                  <span class="ctrl-text">Pausar</span>
+                </button>
+                <button id="sim-btn-reset" class="sim-ctrl-btn btn-reset" type="button" aria-label="Reiniciar a simulação para o dia 0">
+                  <span class="ctrl-icon">↺</span>
+                  <span class="ctrl-text">Reiniciar</span>
+                </button>
+              </div>
 
-          <!-- Indicadores de Rápida Leitura -->
-          <div class="stage-quick-metrics">
-            <div class="quick-metric-item">
-              <span class="metric-caption">Iluminação Visível</span>
-              <span class="metric-highlight" id="quick-illumination">0%</span>
-            </div>
-            <div class="quick-metric-divider"></div>
-            <div class="quick-metric-item">
-              <span class="metric-caption">Idade da Lunação</span>
-              <span class="metric-highlight" id="quick-age">0.0 dias</span>
-            </div>
-            <div class="quick-metric-divider"></div>
-            <div class="quick-metric-item">
-              <span class="metric-caption">Geometria Orbital</span>
-              <span class="metric-highlight" id="quick-elongation">0° (Conjunção)</span>
+              <!-- Controle de Velocidade com 4 Opções (RF08) -->
+              <div class="speed-control-box">
+                <div class="speed-control-header">
+                  <span class="speed-title">Velocidade da Simulação</span>
+                  <span class="speed-current-badge" id="speed-indicator-badge">1x — Normal</span>
+                </div>
+                <div class="speed-buttons-group" role="group" aria-label="Seletor de velocidade da simulação">
+                  <button class="speed-pill-btn" data-speed="0.5" type="button" aria-pressed="false">
+                    0,5x <span class="speed-desc">Lenta</span>
+                  </button>
+                  <button class="speed-pill-btn active" data-speed="1.0" type="button" aria-pressed="true">
+                    1x <span class="speed-desc">Normal</span>
+                  </button>
+                  <button class="speed-pill-btn" data-speed="2.0" type="button" aria-pressed="false">
+                    2x <span class="speed-desc">Rápida</span>
+                  </button>
+                  <button class="speed-pill-btn" data-speed="4.0" type="button" aria-pressed="false">
+                    4x <span class="speed-desc">Muito rápida</span>
+                  </button>
+                </div>
+              </div>
+
+              <!-- Explicação Educativa sobre o Ciclo Lunar -->
+              <div class="sim-education-box">
+                <div class="edu-icon">🌌</div>
+                <div class="edu-body">
+                  <h4 class="edu-title">O que é o Mês Sinódico?</h4>
+                  <p class="edu-text">
+                    O mês sinódico é o período de aproximadamente <strong>29 dias, 12 horas e 44 minutos (~29,53 dias)</strong> que a Lua leva para completar um ciclo completo de fases (de Lua Nova a Lua Nova), conforme observado a partir da Terra. Esse ciclo decorre do movimento orbital contínuo da Lua em torno do nosso planeta combinado à iluminação solar variável.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </section>
-
-      <!-- Painel Informativo Detalhado (RF04) -->
-      <section class="phase-info-section" aria-label="Detalhes e Descrição da Fase Selecionada">
-        <article class="glass-card info-card">
-          <!-- Cabeçalho do Card Informativo -->
-          <header class="info-card-header">
-            <div class="phase-order-pill">
-              <span id="phase-index-display">FASE 1 DE 8</span>
-              <span class="phase-cycle-tag" id="phase-cycle-tag">Ciclo Sinódico</span>
-            </div>
-            <h2 class="phase-main-title" id="phase-title">Lua Nova</h2>
-            <p class="phase-alt-title" id="phase-intl-title">New Moon • Novilúnio</p>
-          </header>
-
-          <!-- Resumo de Destaque -->
-          <div class="phase-summary-box">
-            <p class="phase-summary-text" id="phase-summary">
-              A Lua encontra-se alinhada entre a Terra e o Sol. Sua face iluminada está voltada na direção oposta ao nosso planeta, tornando-a invisível no céu noturno.
-            </p>
-          </div>
-
-          <!-- Descrição Astronômica Detalhada -->
-          <div class="info-block">
-            <h3 class="info-section-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
-              Mecânica Celeste & Observação
-            </h3>
-            <p class="info-body-text" id="phase-description">
-              Durante esta fase, a Lua nasce e se põe quase simultaneamente com o Sol, cruzando a abóbada celeste durante as horas de claridade diurna. Como o plano orbital lunar é inclinado cerca de 5° em relação ao plano orbital terrestre (a eclíptica), a Lua quase sempre passa ligeiramente acima ou abaixo do Sol. Quando o alinhamento coincide perfeitamente com a linha dos nodos, ocorre um eclipse solar.
-            </p>
-          </div>
-
-          <!-- Grade de Parâmetros Técnicos / Efemérides -->
-          <div class="parameters-grid">
-            <div class="param-box">
-              <div class="param-icon">☀️</div>
-              <div class="param-data">
-                <span class="param-title">Horário de Nascer</span>
-                <span class="param-value" id="param-rise">~06:00 (Amanhecer)</span>
-              </div>
-            </div>
-
-            <div class="param-box">
-              <div class="param-icon">🌙</div>
-              <div class="param-data">
-                <span class="param-title">Horário de Pôr</span>
-                <span class="param-value" id="param-set">~18:00 (Entardecer)</span>
-              </div>
-            </div>
-
-            <div class="param-box">
-              <div class="param-icon">🔭</div>
-              <div class="param-data">
-                <span class="param-title">Melhor Visibilidade</span>
-                <span class="param-value" id="param-visibility">Invisível a olho nu</span>
-              </div>
-            </div>
-
-            <div class="param-box">
-              <div class="param-icon">🧭</div>
-              <div class="param-data">
-                <span class="param-title">Próxima Fase</span>
-                <span class="param-value" id="param-next-phase">Lua Crescente</span>
-              </div>
-            </div>
-          </div>
-
-          <!-- Curiosidade Científica Especial -->
-          <div class="curiosity-box">
-            <div class="curiosity-icon">💡</div>
-            <div class="curiosity-content">
-              <h4 class="curiosity-title">Curiosidade Astronômica</h4>
-              <p class="curiosity-text" id="phase-curiosity">
-                Apenas durante a Lua Nova é possível presenciar eclipses solares totais ou parciais, quando o cone de sombra lunar varre a superfície terrestre.
-              </p>
-            </div>
-          </div>
-        </article>
-      </section>
-    </main>
-
-    <!-- Trilho de Seleção Interativa das Oito Fases (RF01 e RF03) -->
-    <nav class="phases-navigation-container" aria-label="Seletor das Oito Fases Lunares">
-      <div class="nav-bar-header">
-        <h3 class="nav-bar-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 2a14.5 14.5 0 0 0 0 20 10 10 0 0 0 0-20"></path></svg>
-          Ciclo Completo das Oito Fases Lunares
-        </h3>
-        <span class="nav-hint">Selecione uma fase clicando nos botões ou usando as teclas 1 a 8</span>
-      </div>
-
-      <div class="phases-rail" id="phases-button-container" role="tablist">
-        <!-- Os 8 botões interativos com miniaturas precisas serão gerados dinamicamente via script.js -->
-      </div>
-    </nav>
+    </div>
 
     <!-- Rodapé Informativo e de Status do Projeto -->
     <footer class="app-footer">
       <div class="footer-content">
         <p class="footer-status">
-          <strong>LunaLab</strong> • Especificação 1 implementada conforme os requisitos RF01 a RF04.
+          <strong>LunaLab</strong> • Especificação 1 e Especificação 2 implementadas com excelência.
         </p>
         <p class="footer-keyboard-hint">
-          Atalhos de teclado: <kbd>←</kbd> <kbd>→</kbd> para navegar | <kbd>1</kbd> a <kbd>8</kbd> para selecionar fase | <kbd>Espaço</kbd> para ciclo automático.
+          Atalhos de teclado: <kbd>←</kbd> <kbd>→</kbd> para navegar na Spec 1 | <kbd>1</kbd> a <kbd>8</kbd> para selecionar fase | <kbd>Espaço</kbd> para alternar play/pause no simulador.
         </p>
       </div>
     </footer>

@@ -1,13 +1,18 @@
 /**
  * ============================================================================
  * LunaLab - JavaScript Principal (script.js)
- * Especificação 1: Visualização Interativa das Fases da Lua
  * 
- * Requisitos Atendidos:
+ * ESPECIFICAÇÃO 1: Visualização Interativa das Fases da Lua
  * - RF01: Exibir as oito fases lunares.
  * - RF02: Apresentar uma representação visual correta de cada fase.
  * - RF03: Permitir selecionar as fases por botões interativos.
  * - RF04: Mostrar nome e descrição da fase selecionada.
+ * 
+ * ESPECIFICAÇÃO 2: Simulação Interativa do Ciclo Lunar
+ * - RF05: Simulação animada da progressão lunar (0 a 29,5 dias) via requestAnimationFrame.
+ * - RF06: Controles da simulação (Iniciar, Pausar, Reiniciar).
+ * - RF07: Contador de dias ("Dia 12,4 de 29,5") e sincronização de fase atual.
+ * - RF08: Controle de velocidade em tempo real (0,5x, 1x, 2x, 4x).
  * ============================================================================
  */
 
@@ -173,35 +178,47 @@
   ];
 
   /* --------------------------------------------------------------------------
-     2. ESTADO DA APLICAÇÃO
+     2. ESTADOS DA APLICAÇÃO (ESPECIFICAÇÃO 1 E 2 SEPARADOS)
      -------------------------------------------------------------------------- */
-  const state = {
+  // Estado da Especificação 1 (Visualizador de Fases)
+  const viewerState = {
     currentPhaseIndex: 0,
     targetAngle: 0,
     currentRenderAngle: 0,
-    hemisphere: 'south', // 'south' (Brasil default) ou 'north'
-    soundEnabled: false,
     isAutoplaying: false,
     autoplayTimer: null
+  };
+
+  // Estado da Especificação 2 (Simulador do Ciclo Lunar)
+  const simState = {
+    isRunning: false,
+    currentDay: 0.0,
+    totalDays: 29.5,
+    speed: 1.0, // 0.5, 1.0, 2.0, 4.0
+    animationFrameId: null,
+    lastTimestamp: null,
+    baseSecondsPerCycle: 29.5 // 1 segundo real = 1 dia lunar na velocidade 1x
+  };
+
+  // Estado Global Compartilhado
+  const globalState = {
+    activeTab: 'viewer', // 'viewer' ou 'simulator'
+    hemisphere: 'south', // 'south' (Brasil default) ou 'north'
+    soundEnabled: false
   };
 
   /* --------------------------------------------------------------------------
      3. ELEMENTOS DO DOM
      -------------------------------------------------------------------------- */
   const elements = {
-    // Canvas Principal e Contexto
-    moonCanvas: document.getElementById('moon-main-canvas'),
-    moonCanvasWrapper: document.getElementById('moon-canvas-wrapper'),
-    lunarCorona: document.getElementById('lunar-corona'),
-    sunlightBadge: document.getElementById('sunlight-direction'),
-    starsCanvas: document.getElementById('stars-canvas'),
+    // Abas de navegação
+    tabBtnViewer: document.getElementById('tab-btn-viewer'),
+    tabBtnSimulator: document.getElementById('tab-btn-simulator'),
+    viewViewer: document.getElementById('view-viewer'),
+    viewSimulator: document.getElementById('view-simulator'),
 
-    // Navegação e Controles
-    btnPrevPhase: document.getElementById('btn-prev-phase'),
-    btnNextPhase: document.getElementById('btn-next-phase'),
-    btnAutoplay: document.getElementById('btn-autoplay'),
-    autoplayIcon: document.getElementById('autoplay-icon'),
-    phasesButtonContainer: document.getElementById('phases-button-container'),
+    // Fundo Cósmico
+    starsCanvas: document.getElementById('stars-canvas'),
 
     // Seletor de Hemisfério & Som
     btnHemiSouth: document.getElementById('btn-hemi-south'),
@@ -209,12 +226,21 @@
     soundToggleBtn: document.getElementById('sound-toggle-btn'),
     soundIcon: document.getElementById('sound-icon'),
 
-    // Indicadores Rápidos
+    // --- ELEMENTOS DA ESPECIFICAÇÃO 1 ---
+    moonCanvas: document.getElementById('moon-main-canvas'),
+    moonCanvasWrapper: document.getElementById('moon-canvas-wrapper'),
+    lunarCorona: document.getElementById('lunar-corona'),
+    sunlightBadge: document.getElementById('sunlight-direction'),
+    btnPrevPhase: document.getElementById('btn-prev-phase'),
+    btnNextPhase: document.getElementById('btn-next-phase'),
+    btnAutoplay: document.getElementById('btn-autoplay'),
+    autoplayIcon: document.getElementById('autoplay-icon'),
+    phasesButtonContainer: document.getElementById('phases-button-container'),
+
     quickIllumination: document.getElementById('quick-illumination'),
     quickAge: document.getElementById('quick-age'),
     quickElongation: document.getElementById('quick-elongation'),
 
-    // Card de Informações Detalhadas (RF04)
     phaseIndexDisplay: document.getElementById('phase-index-display'),
     phaseTitle: document.getElementById('phase-title'),
     phaseIntlTitle: document.getElementById('phase-intl-title'),
@@ -224,11 +250,28 @@
     paramSet: document.getElementById('param-set'),
     paramVisibility: document.getElementById('param-visibility'),
     paramNextPhase: document.getElementById('param-next-phase'),
-    phaseCuriosity: document.getElementById('phase-curiosity')
+    phaseCuriosity: document.getElementById('phase-curiosity'),
+
+    // --- ELEMENTOS DA ESPECIFICAÇÃO 2 (SIMULADOR) ---
+    simMoonCanvas: document.getElementById('sim-moon-canvas'),
+    simLunarCorona: document.getElementById('sim-lunar-corona'),
+    simSunText: document.getElementById('sim-sun-text'),
+    simCurrentPhaseName: document.getElementById('sim-current-phase-name'),
+    simDayDisplay: document.getElementById('sim-day-display'),
+    simPercentTag: document.getElementById('sim-percent-tag'),
+    simIlluminationDisplay: document.getElementById('sim-illumination-display'),
+    simProgressTrack: document.getElementById('sim-progress-track'),
+    simProgressFill: document.getElementById('sim-progress-fill'),
+
+    simBtnPlay: document.getElementById('sim-btn-play'),
+    simBtnPause: document.getElementById('sim-btn-pause'),
+    simBtnReset: document.getElementById('sim-btn-reset'),
+    speedIndicatorBadge: document.getElementById('speed-indicator-badge'),
+    speedButtons: document.querySelectorAll('.speed-pill-btn')
   };
 
   /* --------------------------------------------------------------------------
-     4. ÁUDIO SINTETIZADO (Web Audio API - Efeitos Sutis Espaciais)
+     4. ÁUDIO SINTETIZADO (Web Audio API - Efeitos Espaciais Nativos)
      -------------------------------------------------------------------------- */
   let audioCtx = null;
 
@@ -243,7 +286,7 @@
   }
 
   function playCelestialChime(frequency = 528) {
-    if (!state.soundEnabled) return;
+    if (!globalState.soundEnabled) return;
     try {
       initAudio();
       if (!audioCtx) return;
@@ -264,19 +307,15 @@
       osc.start();
       osc.stop(audioCtx.currentTime + 0.55);
     } catch (e) {
-      // Ignorar caso políticas de áudio restrinjam
+      // Ignorar caso políticas do navegador restrinjam
     }
   }
 
   /* --------------------------------------------------------------------------
-     5. TEXTURA PROCEDURAL DA LUA (ALTA FIDELIDADE VISUAL - RF02)
+     5. TEXTURA PROCEDURAL DA LUA (REUTILIZÁVEL - RF02 & RF05)
      -------------------------------------------------------------------------- */
   let lunarTextureCanvas = null;
 
-  /**
-   * Gera uma textura de superfície lunar em alta resolução offscreen com mares basálticos,
-   * relevos, crateras reais (Tycho, Copérnico, etc.) e feixes de impacto.
-   */
   function createProceduralMoonTexture(size = 800) {
     const canvas = document.createElement('canvas');
     canvas.width = size;
@@ -302,7 +341,7 @@
     ctx.fillStyle = baseGrad;
     ctx.fillRect(0, 0, size, size);
 
-    // Adiciona granulação/ruído de regolito lunar
+    // Ruído de regolito lunar
     const noiseGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, radius);
     noiseGrad.addColorStop(0, 'rgba(255, 255, 255, 0.08)');
     noiseGrad.addColorStop(0.7, 'rgba(0, 0, 0, 0.05)');
@@ -310,15 +349,15 @@
     ctx.fillStyle = noiseGrad;
     ctx.fillRect(0, 0, size, size);
 
-    // Pintura dos Grandes Mares Lunares Basálticos (Mare Imbrium, Serenitatis, Tranquillitatis, etc.)
+    // Pintura dos Grandes Mares Lunares Basálticos
     const maria = [
-      { x: cx - radius * 0.28, y: cy - radius * 0.26, rx: radius * 0.35, ry: radius * 0.3, rot: -0.2, color: 'rgba(55, 62, 85, 0.65)' }, // Oceanus Procellarum / Imbrium
-      { x: cx + radius * 0.25, y: cy - radius * 0.28, rx: radius * 0.22, ry: radius * 0.2, rot: 0.1, color: 'rgba(50, 56, 78, 0.7)' },   // Mare Serenitatis
-      { x: cx + radius * 0.35, y: cy - radius * 0.05, rx: radius * 0.24, ry: radius * 0.19, rot: 0.3, color: 'rgba(46, 52, 74, 0.72)' },  // Mare Tranquillitatis
-      { x: cx + radius * 0.58, y: cy - radius * 0.18, rx: radius * 0.14, ry: radius * 0.12, rot: 0, color: 'rgba(42, 48, 68, 0.75)' },   // Mare Crisium
-      { x: cx + radius * 0.42, y: cy + radius * 0.18, rx: radius * 0.2, ry: radius * 0.17, rot: -0.1, color: 'rgba(48, 55, 76, 0.68)' },  // Mare Fecunditatis
-      { x: cx + radius * 0.15, y: cy + radius * 0.22, rx: radius * 0.18, ry: radius * 0.15, rot: 0.2, color: 'rgba(52, 58, 80, 0.65)' },  // Mare Nectaris
-      { x: cx - radius * 0.22, y: cy + radius * 0.25, rx: radius * 0.24, ry: radius * 0.22, rot: -0.25, color: 'rgba(50, 57, 78, 0.68)' } // Mare Nubium
+      { x: cx - radius * 0.28, y: cy - radius * 0.26, rx: radius * 0.35, ry: radius * 0.3, rot: -0.2, color: 'rgba(55, 62, 85, 0.65)' }, // Imbrium
+      { x: cx + radius * 0.25, y: cy - radius * 0.28, rx: radius * 0.22, ry: radius * 0.2, rot: 0.1, color: 'rgba(50, 56, 78, 0.7)' },   // Serenitatis
+      { x: cx + radius * 0.35, y: cy - radius * 0.05, rx: radius * 0.24, ry: radius * 0.19, rot: 0.3, color: 'rgba(46, 52, 74, 0.72)' },  // Tranquillitatis
+      { x: cx + radius * 0.58, y: cy - radius * 0.18, rx: radius * 0.14, ry: radius * 0.12, rot: 0, color: 'rgba(42, 48, 68, 0.75)' },   // Crisium
+      { x: cx + radius * 0.42, y: cy + radius * 0.18, rx: radius * 0.2, ry: radius * 0.17, rot: -0.1, color: 'rgba(48, 55, 76, 0.68)' },  // Fecunditatis
+      { x: cx + radius * 0.15, y: cy + radius * 0.22, rx: radius * 0.18, ry: radius * 0.15, rot: 0.2, color: 'rgba(52, 58, 80, 0.65)' },  // Nectaris
+      { x: cx - radius * 0.22, y: cy + radius * 0.25, rx: radius * 0.24, ry: radius * 0.22, rot: -0.25, color: 'rgba(50, 57, 78, 0.68)' } // Nubium
     ];
 
     maria.forEach(m => {
@@ -333,7 +372,7 @@
       ctx.restore();
     });
 
-    // Raio de Impacto de Tycho (ao Sul, com feixes brancos espetaculares)
+    // Raio de Impacto de Tycho
     const tychoX = cx - radius * 0.12;
     const tychoY = cy + radius * 0.68;
 
@@ -350,26 +389,22 @@
     }
     ctx.restore();
 
-    // Crateras Icônicas Lunares
+    // Crateras
     const craters = [
-      { x: tychoX, y: tychoY, r: 16, depth: 0.8 }, // Tycho
-      { x: cx - radius * 0.35, y: cy - radius * 0.08, r: 18, depth: 0.75 }, // Copernicus
-      { x: cx - radius * 0.52, y: cy - radius * 0.1, r: 12, depth: 0.7 }, // Kepler
-      { x: cx - radius * 0.6, y: cy - radius * 0.35, r: 14, depth: 0.85 }, // Aristarchus (muito brilhante)
-      { x: cx + radius * 0.05, y: cy - radius * 0.52, r: 17, depth: 0.7 }, // Plato
-      { x: cx - radius * 0.08, y: cy - radius * 0.02, r: 13, depth: 0.65 },
-      { x: cx + radius * 0.28, y: cy + radius * 0.55, r: 15, depth: 0.6 }
+      { x: tychoX, y: tychoY, r: 16 },
+      { x: cx - radius * 0.35, y: cy - radius * 0.08, r: 18 },
+      { x: cx - radius * 0.52, y: cy - radius * 0.1, r: 12 },
+      { x: cx - radius * 0.6, y: cy - radius * 0.35, r: 14 },
+      { x: cx + radius * 0.05, y: cy - radius * 0.52, r: 17 }
     ];
 
     craters.forEach(c => {
-      // Borda iluminada
       ctx.save();
       ctx.beginPath();
       ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
       ctx.fill();
 
-      // Centro em sombra
       ctx.beginPath();
       ctx.arc(c.x + 2, c.y + 1, c.r * 0.75, 0, Math.PI * 2);
       ctx.fillStyle = 'rgba(20, 24, 38, 0.65)';
@@ -377,7 +412,7 @@
       ctx.restore();
     });
 
-    // Escurecimento de Borda Esférica (Limb Darkening Físico)
+    // Limb Darkening
     const limbGrad = ctx.createRadialGradient(cx, cy, radius * 0.7, cx, cy, radius);
     limbGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
     limbGrad.addColorStop(0.85, 'rgba(10, 15, 30, 0.25)');
@@ -392,17 +427,11 @@
   }
 
   /* --------------------------------------------------------------------------
-     6. RENDERIZAÇÃO DA FASE LUNAR NO CANVAS PRINCIPAL E MINIATURAS (RF02)
+     6. MOTOR DE RENDERIZAÇÃO LUNAR FÍSICA (RF02 & RF05 - TOTALMENTE REUTILIZADO)
      -------------------------------------------------------------------------- */
   /**
-   * Renderiza a Lua com o terminador astronômico exato.
-   * 
-   * @param {CanvasRenderingContext2D} ctx - Contexto do canvas.
-   * @param {number} width - Largura do canvas.
-   * @param {number} height - Altura do canvas.
-   * @param {number} angle - Ângulo de fase em radianos (0 a 2*PI).
-   * @param {string} hemisphere - 'south' ou 'north'.
-   * @param {boolean} isThumbnail - Se true, renderiza versão compacta otimizada.
+   * Renderiza a fase da Lua calculando com precisão esférica a linha do terminador.
+   * Reutilizada tanto pelo visualizador (Spec 1) quanto pelo simulador (Spec 2).
    */
   function renderLunarPhase(ctx, width, height, angle, hemisphere = 'south', isThumbnail = false) {
     ctx.clearRect(0, 0, width, height);
@@ -411,58 +440,37 @@
     const cy = height / 2;
     const radius = Math.min(width, height) * 0.46;
 
-    // Normalização do ângulo no ciclo sinódico [0, 2PI)
     let normAngle = angle % (Math.PI * 2);
     if (normAngle < 0) normAngle += Math.PI * 2;
 
-    // Garante que a textura base existe
     if (!lunarTextureCanvas) {
       lunarTextureCanvas = createProceduralMoonTexture(800);
     }
 
     ctx.save();
 
-    // 1. Cria a máscara circular do disco lunar
+    // Máscara do disco lunar
     ctx.beginPath();
     ctx.arc(cx, cy, radius, 0, Math.PI * 2);
     ctx.closePath();
     ctx.clip();
 
-    // 2. Desenha a superfície lunar base (iluminada)
+    // Desenha textura iluminada
     ctx.drawImage(lunarTextureCanvas, cx - radius, cy - radius, radius * 2, radius * 2);
 
-    // 3. Cálculo da Sombra e Linha do Terminador Esférico
-    // No hemisfério Sul (Brasil):
-    // - Fase Crescente (0 < angle < PI): luz à ESQUERDA (formato de "C").
-    // - Fase Minguante (PI < angle < 2PI): luz à DIREITA (formato de "D").
-    // No hemisfério Norte:
-    // - Fase Crescente: luz à DIREITA (formato de "D").
-    // - Fase Minguante: luz à ESQUERDA (formato de "C").
-    
-    // Inversão de orientação conforme o hemisfério
+    // Inversão de orientação astronômica conforme hemisfério
+    // Sul (Brasil): Crescente ("C"), luz à esquerda | Minguante ("D"), luz à direita.
+    // Norte: Crescente ("D"), luz à direita | Minguante ("C"), luz à esquerda.
     const flipDirection = (hemisphere === 'south') ? -1 : 1;
-
-    // Desenha o lado noturno (sombra com Brilho da Terra suave)
-    // A curva do terminador ortográfico é uma semi-elipse de raio horizontal r * cos(angle)
     const cosAngle = Math.cos(normAngle);
-    const isWaxing = normAngle <= Math.PI; // Crescendo ou Minguando
+    const isWaxing = normAngle <= Math.PI;
 
     ctx.beginPath();
-    
-    // Caminho da sombra:
-    // Traçamos a borda externa da sombra e em seguida a curva elíptica do terminador
     if (isWaxing) {
-      // Crescendo:
-      // A porção iluminada nasce no lado definido pelo hemisfério.
-      // O lado em sombra é o lado oposto.
-      const shadowSide = flipDirection < 0 ? 1 : -1; // 1 = direita, -1 = esquerda
-      
-      // Semicírculo externo da sombra
+      const shadowSide = flipDirection < 0 ? 1 : -1;
       ctx.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2, shadowSide > 0 ? false : true);
-      // Arco do terminador (semi-elipse) voltando ao topo
       ctx.ellipse(cx, cy, Math.max(0.1, radius * Math.abs(cosAngle)), radius, 0, Math.PI / 2, -Math.PI / 2, (cosAngle > 0 ? (shadowSide < 0) : (shadowSide > 0)));
     } else {
-      // Minguando:
       const shadowSide = flipDirection < 0 ? -1 : 1;
       ctx.arc(cx, cy, radius, -Math.PI / 2, Math.PI / 2, shadowSide > 0 ? false : true);
       ctx.ellipse(cx, cy, Math.max(0.1, radius * Math.abs(cosAngle)), radius, 0, Math.PI / 2, -Math.PI / 2, (cosAngle < 0 ? (shadowSide < 0) : (shadowSide > 0)));
@@ -470,11 +478,11 @@
 
     ctx.closePath();
 
-    // Preenche a sombra com a luz cinérea (Earthshine realista)
+    // Preenchimento com luz cinérea (Earthshine realista)
     ctx.fillStyle = isThumbnail ? 'rgba(8, 12, 24, 0.96)' : 'rgba(7, 10, 22, 0.94)';
     ctx.fill();
 
-    // Suavização da borda do terminador (gradiente de penumbra)
+    // Penumbra ao longo do terminador
     if (!isThumbnail) {
       ctx.strokeStyle = 'rgba(5, 8, 18, 0.7)';
       ctx.lineWidth = 4;
@@ -483,7 +491,7 @@
       ctx.filter = 'none';
     }
 
-    // 4. Brilho do Limbo Externo Iluminado
+    // Brilho do limbo
     if (normAngle > 0.05 && normAngle < Math.PI * 2 - 0.05) {
       const rimGrad = ctx.createRadialGradient(cx, cy, radius * 0.94, cx, cy, radius);
       rimGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
@@ -498,88 +506,80 @@
   }
 
   /* --------------------------------------------------------------------------
-     7. LOOP DE ANIMAÇÃO DO TERMINADOR (Interpolação Suave ao Mudar Fase)
+     7. LÓGICA DA ESPECIFICAÇÃO 1: VISUALIZADOR DE FASES (RF01 - RF04)
      -------------------------------------------------------------------------- */
-  let isAnimating = false;
+  let isViewerAnimating = false;
 
-  function animateTerminatorTransition() {
-    if (!isAnimating) return;
+  function animateViewerTerminator() {
+    if (!isViewerAnimating) return;
 
-    // Diferença angular mais curta no círculo
-    let diff = state.targetAngle - state.currentRenderAngle;
+    let diff = viewerState.targetAngle - viewerState.currentRenderAngle;
     while (diff < -Math.PI) diff += Math.PI * 2;
     while (diff > Math.PI) diff -= Math.PI * 2;
 
     if (Math.abs(diff) < 0.005) {
-      state.currentRenderAngle = state.targetAngle;
-      isAnimating = false;
+      viewerState.currentRenderAngle = viewerState.targetAngle;
+      isViewerAnimating = false;
     } else {
-      state.currentRenderAngle += diff * 0.12;
+      viewerState.currentRenderAngle += diff * 0.12;
     }
 
     const ctx = elements.moonCanvas.getContext('2d');
-    renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, state.currentRenderAngle, state.hemisphere, false);
+    renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, viewerState.currentRenderAngle, globalState.hemisphere, false);
 
-    if (isAnimating) {
-      requestAnimationFrame(animateTerminatorTransition);
+    if (isViewerAnimating) {
+      requestAnimationFrame(animateViewerTerminator);
     }
   }
 
   function startPhaseAnimation(newAngle) {
-    state.targetAngle = newAngle;
-    isAnimating = true;
-    requestAnimationFrame(animateTerminatorTransition);
+    viewerState.targetAngle = newAngle;
+    isViewerAnimating = true;
+    requestAnimationFrame(animateViewerTerminator);
   }
 
-  /* --------------------------------------------------------------------------
-     8. ATUALIZAÇÃO DINÂMICA DA INTERFACE E INFORMAÇÕES (RF04)
-     -------------------------------------------------------------------------- */
   function updatePhaseDetails(phase) {
-    // 1. Atualização dos Textos e Informações da Fase (RF04)
     elements.phaseIndexDisplay.textContent = `FASE ${phase.id + 1} DE 8`;
     elements.phaseTitle.textContent = phase.name;
     elements.phaseIntlTitle.textContent = phase.intlName;
     elements.phaseSummary.textContent = phase.summary;
     elements.phaseDescription.textContent = phase.description;
 
-    // Parâmetros técnicos
     elements.paramRise.textContent = phase.riseTime;
     elements.paramSet.textContent = phase.setTime;
     elements.paramVisibility.textContent = phase.visibility;
     elements.paramNextPhase.textContent = phase.nextPhase;
     elements.phaseCuriosity.textContent = phase.curiosity;
 
-    // Métricas rápidas no palco
     elements.quickIllumination.textContent = phase.illuminationLabel;
     elements.quickAge.textContent = `${phase.ageDays.toFixed(1)} dias`;
     elements.quickElongation.textContent = phase.elongation;
 
-    // 2. Ajuste do Brilho da Corona Luminosa
+    // Brilho da corona
     const coronaOpacity = 0.05 + (phase.illuminationPercent / 100) * 0.35;
     const coronaScale = 0.85 + (phase.illuminationPercent / 100) * 0.35;
     elements.lunarCorona.style.opacity = coronaOpacity.toString();
     elements.lunarCorona.style.transform = `translate(-50%, -50%) scale(${coronaScale})`;
 
-    // 3. Atualização do Indicador de Direção Solar
+    // Direção solar
     let sunText = 'Luz Solar';
     if (phase.id === 0) {
       sunText = 'Sol atrás da Lua';
     } else if (phase.id === 4) {
       sunText = 'Sol oposto à Terra';
-    } else if (state.hemisphere === 'south') {
+    } else if (globalState.hemisphere === 'south') {
       sunText = (phase.id < 4) ? '☀️ Luz Solar ←' : '→ Luz Solar ☀️';
     } else {
       sunText = (phase.id < 4) ? '→ Luz Solar ☀️' : '☀️ Luz Solar ←';
     }
     elements.sunlightBadge.querySelector('.sun-text').textContent = sunText;
 
-    // 4. Marcação do Botão Ativo no Trilho (RF03)
+    // Atualiza botões
     const allButtons = elements.phasesButtonContainer.querySelectorAll('.phase-card-btn');
     allButtons.forEach((btn, idx) => {
       if (idx === phase.id) {
         btn.classList.add('active');
         btn.setAttribute('aria-selected', 'true');
-        btn.focus();
       } else {
         btn.classList.remove('active');
         btn.setAttribute('aria-selected', 'false');
@@ -587,44 +587,37 @@
     });
   }
 
-  /* --------------------------------------------------------------------------
-     9. GERADOR DOS BOTÕES INTERATIVOS DAS OITO FASES (RF01 & RF03)
-     -------------------------------------------------------------------------- */
   function buildInteractivePhaseButtons() {
     elements.phasesButtonContainer.innerHTML = '';
 
     LUNAR_PHASES.forEach((phase, index) => {
       const btn = document.createElement('button');
-      btn.className = `phase-card-btn ${index === state.currentPhaseIndex ? 'active' : ''}`;
+      btn.className = `phase-card-btn ${index === viewerState.currentPhaseIndex ? 'active' : ''}`;
       btn.type = 'button';
       btn.setAttribute('role', 'tab');
-      btn.setAttribute('aria-selected', index === state.currentPhaseIndex ? 'true' : 'false');
+      btn.setAttribute('aria-selected', index === viewerState.currentPhaseIndex ? 'true' : 'false');
       btn.setAttribute('aria-label', `Fase ${phase.number}: ${phase.name}`);
       btn.title = `Selecionar ${phase.name} (${phase.illuminationLabel} iluminada)`;
 
-      // Miniatura em Canvas de Alta Fidelidade (RF02)
       const thumbWrapper = document.createElement('div');
       thumbWrapper.className = 'phase-thumb-wrapper';
 
       const thumbCanvas = document.createElement('canvas');
       thumbCanvas.className = 'phase-thumb-canvas';
-      thumbCanvas.width = 104; // Retina ready
+      thumbCanvas.width = 104;
       thumbCanvas.height = 104;
       thumbCanvas.dataset.phaseIndex = index;
 
       thumbWrapper.appendChild(thumbCanvas);
 
-      // Ordem da Fase (ex: FASE 01)
       const orderSpan = document.createElement('span');
       orderSpan.className = 'phase-card-order';
       orderSpan.textContent = `FASE ${phase.number}`;
 
-      // Nome da Fase (ex: Quarto Crescente)
       const nameSpan = document.createElement('span');
       nameSpan.className = 'phase-card-name';
       nameSpan.textContent = phase.name;
 
-      // Porcentagem de iluminação
       const badgeSpan = document.createElement('span');
       badgeSpan.className = 'phase-card-badge';
       badgeSpan.textContent = phase.illuminationLabel;
@@ -634,49 +627,37 @@
       btn.appendChild(nameSpan);
       btn.appendChild(badgeSpan);
 
-      // Evento de Seleção Interativa por Clique (RF03)
       btn.addEventListener('click', () => {
         selectPhase(index);
       });
 
       elements.phasesButtonContainer.appendChild(btn);
 
-      // Renderiza a miniatura imediatamente
       const thumbCtx = thumbCanvas.getContext('2d');
-      renderLunarPhase(thumbCtx, thumbCanvas.width, thumbCanvas.height, phase.phaseAngle, state.hemisphere, true);
+      renderLunarPhase(thumbCtx, thumbCanvas.width, thumbCanvas.height, phase.phaseAngle, globalState.hemisphere, true);
     });
   }
 
-  /**
-   * Atualiza todas as 8 miniaturas dos botões quando o hemisfério é alterado
-   */
   function reRenderAllThumbnails() {
     const thumbCanvases = elements.phasesButtonContainer.querySelectorAll('.phase-thumb-canvas');
     thumbCanvases.forEach((canvas) => {
       const idx = parseInt(canvas.dataset.phaseIndex, 10);
       const phase = LUNAR_PHASES[idx];
       const ctx = canvas.getContext('2d');
-      renderLunarPhase(ctx, canvas.width, canvas.height, phase.phaseAngle, state.hemisphere, true);
+      renderLunarPhase(ctx, canvas.width, canvas.height, phase.phaseAngle, globalState.hemisphere, true);
     });
   }
 
-  /* --------------------------------------------------------------------------
-     10. AÇÃO DE SELEÇÃO DE FASE (RF03)
-     -------------------------------------------------------------------------- */
   function selectPhase(newIndex, playSound = true) {
     if (newIndex < 0) newIndex = LUNAR_PHASES.length - 1;
     if (newIndex >= LUNAR_PHASES.length) newIndex = 0;
 
-    state.currentPhaseIndex = newIndex;
+    viewerState.currentPhaseIndex = newIndex;
     const selected = LUNAR_PHASES[newIndex];
 
-    // Transição suave do terminador no canvas principal (RF02)
     startPhaseAnimation(selected.phaseAngle);
-
-    // Atualiza todos os textos e indicadores (RF04)
     updatePhaseDetails(selected);
 
-    // Efeito sonoro harmônico opcional
     if (playSound) {
       const baseFreq = 440 + newIndex * 40;
       playCelestialChime(baseFreq);
@@ -684,18 +665,15 @@
   }
 
   function nextPhase() {
-    selectPhase(state.currentPhaseIndex + 1);
+    selectPhase(viewerState.currentPhaseIndex + 1);
   }
 
   function prevPhase() {
-    selectPhase(state.currentPhaseIndex - 1);
+    selectPhase(viewerState.currentPhaseIndex - 1);
   }
 
-  /* --------------------------------------------------------------------------
-     11. REPRODUÇÃO AUTOMÁTICA DO CICLO (AUTOPLAY)
-     -------------------------------------------------------------------------- */
   function toggleAutoplay() {
-    if (state.isAutoplaying) {
+    if (viewerState.isAutoplaying) {
       stopAutoplay();
     } else {
       startAutoplay();
@@ -703,30 +681,257 @@
   }
 
   function startAutoplay() {
-    state.isAutoplaying = true;
+    viewerState.isAutoplaying = true;
     elements.btnAutoplay.classList.add('playing');
     elements.autoplayIcon.textContent = '⏸';
     document.getElementById('autoplay-text').textContent = 'Pausar Ciclo';
 
-    state.autoplayTimer = setInterval(() => {
+    viewerState.autoplayTimer = setInterval(() => {
       nextPhase();
     }, 2400);
   }
 
   function stopAutoplay() {
-    state.isAutoplaying = false;
+    viewerState.isAutoplaying = false;
     elements.btnAutoplay.classList.remove('playing');
     elements.autoplayIcon.textContent = '▶';
     document.getElementById('autoplay-text').textContent = 'Ciclo Contínuo';
 
-    if (state.autoplayTimer) {
-      clearInterval(state.autoplayTimer);
-      state.autoplayTimer = null;
+    if (viewerState.autoplayTimer) {
+      clearInterval(viewerState.autoplayTimer);
+      viewerState.autoplayTimer = null;
     }
   }
 
   /* --------------------------------------------------------------------------
-     12. FUNDO CÓSMICO DINÂMICO (CANVAS DE ESTRELAS E NEBULOSAS)
+     8. LÓGICA DA ESPECIFICAÇÃO 2: SIMULADOR DO CICLO LUNAR (RF05 - RF08)
+     -------------------------------------------------------------------------- */
+  /**
+   * Determina o nome astronômico da fase de acordo com o dia atual do ciclo (0 a 29,5).
+   * @param {number} day - Dia atual do ciclo sinódico.
+   * @returns {string} - Nome da fase lunar.
+   */
+  function getPhaseNameForDay(day) {
+    // Ciclo sinódico de 29,5 dias dividido proporcionalmente entre as 8 fases
+    // Nova: ~0.0 - 1.8 dias
+    // Crescente: ~1.8 - 5.5 dias
+    // Quarto Crescente: ~5.5 - 9.2 dias (pico em 7.4)
+    // Gibosa Crescente: ~9.2 - 12.9 dias
+    // Cheia: ~12.9 - 16.6 dias (pico em 14.75)
+    // Gibosa Minguante: ~16.6 - 20.3 dias
+    // Quarto Minguante: ~20.3 - 24.0 dias (pico em 22.1)
+    // Minguante: ~24.0 - 27.7 dias
+    // Nova: ~27.7 - 29.5 dias
+    if (day < 1.84 || day >= 27.66) return 'Lua Nova';
+    if (day < 5.53) return 'Lua Crescente';
+    if (day < 9.22) return 'Quarto Crescente';
+    if (day < 12.91) return 'Gibosa Crescente';
+    if (day < 16.59) return 'Lua Cheia';
+    if (day < 20.28) return 'Gibosa Minguante';
+    if (day < 23.97) return 'Quarto Minguante';
+    return 'Lua Minguante';
+  }
+
+  /**
+   * Atualiza todos os elementos visuais, textos, barra de progresso e canvas do simulador.
+   */
+  function updateSimulatorUI() {
+    const day = simState.currentDay;
+    const total = simState.totalDays;
+
+    // Ângulo de fase: 0 a 2*PI radianos
+    const phaseAngle = (day / total) * (Math.PI * 2);
+
+    // Porcentagem de iluminação visível: k = (1 - cos(theta)) / 2
+    const illuminationFrac = (1 - Math.cos(phaseAngle)) / 2;
+    const illuminationPercent = (illuminationFrac * 100).toFixed(1);
+
+    // 1. Contador de Dias (RF07: "Dia 12,4 de 29,5")
+    const formattedDay = day.toFixed(1).replace('.', ',');
+    elements.simDayDisplay.textContent = `Dia ${formattedDay} de 29,5`;
+
+    // 2. Porcentagem do ciclo e iluminação
+    const cyclePercent = ((day / total) * 100).toFixed(1);
+    elements.simPercentTag.textContent = `${cyclePercent}% do Ciclo`;
+    elements.simIlluminationDisplay.innerHTML = `Iluminação Atual: <strong>${illuminationPercent}%</strong>`;
+
+    // 3. Barra de Progresso
+    elements.simProgressFill.style.width = `${(day / total) * 100}%`;
+    elements.simProgressTrack.setAttribute('aria-valuenow', day.toFixed(1));
+
+    // 4. Nome da Fase Atual (RF07)
+    const phaseName = getPhaseNameForDay(day);
+    elements.simCurrentPhaseName.textContent = phaseName;
+
+    // 5. Renderização no Canvas da Simulação (RF05 - Reutilizando renderLunarPhase)
+    const simCtx = elements.simMoonCanvas.getContext('2d');
+    renderLunarPhase(simCtx, elements.simMoonCanvas.width, elements.simMoonCanvas.height, phaseAngle, globalState.hemisphere, false);
+
+    // 6. Brilho da Corona Luminosa do Simulador
+    const coronaOpacity = 0.05 + illuminationFrac * 0.35;
+    const coronaScale = 0.85 + illuminationFrac * 0.35;
+    elements.simLunarCorona.style.opacity = coronaOpacity.toString();
+    elements.simLunarCorona.style.transform = `translate(-50%, -50%) scale(${coronaScale})`;
+
+    // 7. Indicador de Direção Solar
+    let sunText = 'Luz Solar';
+    if (day < 1 || day > 28.5) {
+      sunText = 'Sol atrás da Lua';
+    } else if (day >= 14 && day <= 15.5) {
+      sunText = 'Sol oposto à Terra';
+    } else if (globalState.hemisphere === 'south') {
+      sunText = (day < 14.75) ? '☀️ Luz Solar ←' : '→ Luz Solar ☀️';
+    } else {
+      sunText = (day < 14.75) ? '→ Luz Solar ☀️' : '☀️ Luz Solar ←';
+    }
+    elements.simSunText.textContent = sunText;
+  }
+
+  /**
+   * Loop de simulação com requestAnimationFrame e cálculo em tempo real baseado em deltaTime.
+   */
+  function simulationLoop(timestamp) {
+    if (!simState.isRunning) return;
+
+    if (!simState.lastTimestamp) {
+      simState.lastTimestamp = timestamp;
+    }
+
+    let deltaSeconds = (timestamp - simState.lastTimestamp) / 1000;
+    // Proteção contra saltos anormais se a aba for minimizada
+    if (deltaSeconds > 0.1) deltaSeconds = 0.1;
+    simState.lastTimestamp = timestamp;
+
+    // Velocidade: baseSecondsPerCycle = 29.5s (1 dia lunar/s a 1x)
+    const daysPerSecond = (simState.totalDays / simState.baseSecondsPerCycle) * simState.speed;
+    simState.currentDay += deltaSeconds * daysPerSecond;
+
+    // Ciclo contínuo: ao atingir 29,5 dias, reinicia suavemente em 0
+    if (simState.currentDay >= simState.totalDays) {
+      simState.currentDay = simState.currentDay % simState.totalDays;
+    }
+
+    // Atualiza a interface da simulação
+    updateSimulatorUI();
+
+    // Próximo frame
+    simState.animationFrameId = requestAnimationFrame(simulationLoop);
+  }
+
+  /**
+   * Inicia ou retoma a animação (RF06).
+   */
+  function startSimulation() {
+    if (simState.isRunning) return; // Evita múltiplas animações simultâneas
+
+    // Se a Spec 1 estiver em autoplay, interrompe para evitar conflito
+    if (viewerState.isAutoplaying) {
+      stopAutoplay();
+    }
+
+    simState.isRunning = true;
+    simState.lastTimestamp = null;
+
+    // Atualiza estados dos botões
+    elements.simBtnPlay.disabled = true;
+    elements.simBtnPause.disabled = false;
+
+    playCelestialChime(580);
+    simState.animationFrameId = requestAnimationFrame(simulationLoop);
+  }
+
+  /**
+   * Pausa a animação, preservando o dia e iluminação exibidos (RF06).
+   */
+  function pauseSimulation() {
+    if (!simState.isRunning) return;
+
+    simState.isRunning = false;
+    if (simState.animationFrameId) {
+      cancelAnimationFrame(simState.animationFrameId);
+      simState.animationFrameId = null;
+    }
+
+    elements.simBtnPlay.disabled = false;
+    elements.simBtnPause.disabled = true;
+  }
+
+  /**
+   * Reinicia a animação: interrompe, retorna ao dia 0 e exibe Lua Nova (RF06).
+   */
+  function resetSimulation() {
+    pauseSimulation();
+    simState.currentDay = 0.0;
+    updateSimulatorUI();
+
+    elements.simBtnPlay.disabled = false;
+    elements.simBtnPause.disabled = true;
+    playCelestialChime(440);
+  }
+
+  /**
+   * Altera a velocidade da simulação sem reiniciar o ciclo (RF08).
+   * @param {number} newSpeed - 0.5, 1.0, 2.0 ou 4.0
+   */
+  function setSimulationSpeed(newSpeed) {
+    simState.speed = newSpeed;
+
+    // Atualiza classes ativas nos botões
+    elements.speedButtons.forEach(btn => {
+      const btnSpeed = parseFloat(btn.dataset.speed);
+      if (btnSpeed === newSpeed) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-pressed', 'true');
+      } else {
+        btn.classList.remove('active');
+        btn.setAttribute('aria-pressed', 'false');
+      }
+    });
+
+    // Atualiza badge descritivo
+    let label = '1x — Normal';
+    if (newSpeed === 0.5) label = '0,5x — Lenta';
+    else if (newSpeed === 2.0) label = '2x — Rápida';
+    else if (newSpeed === 4.0) label = '4x — Muito rápida';
+
+    elements.speedIndicatorBadge.textContent = label;
+  }
+
+  /* --------------------------------------------------------------------------
+     9. GERENCIADOR DE ABAS (ESPECIFICAÇÃO 1 VS ESPECIFICAÇÃO 2)
+     -------------------------------------------------------------------------- */
+  function switchTab(target) {
+    if (globalState.activeTab === target) return;
+    globalState.activeTab = target;
+
+    if (target === 'viewer') {
+      elements.tabBtnViewer.classList.add('active');
+      elements.tabBtnViewer.setAttribute('aria-selected', 'true');
+      elements.tabBtnSimulator.classList.remove('active');
+      elements.tabBtnSimulator.setAttribute('aria-selected', 'false');
+
+      elements.viewViewer.classList.add('active');
+      elements.viewSimulator.classList.remove('active');
+
+      // Re-renderiza o canvas da Spec 1
+      const ctx = elements.moonCanvas.getContext('2d');
+      renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, viewerState.currentRenderAngle, globalState.hemisphere, false);
+    } else {
+      elements.tabBtnSimulator.classList.add('active');
+      elements.tabBtnSimulator.setAttribute('aria-selected', 'true');
+      elements.tabBtnViewer.classList.remove('active');
+      elements.tabBtnViewer.setAttribute('aria-selected', 'false');
+
+      elements.viewSimulator.classList.add('active');
+      elements.viewViewer.classList.remove('active');
+
+      // Atualiza renderização da Spec 2
+      updateSimulatorUI();
+    }
+  }
+
+  /* --------------------------------------------------------------------------
+     10. FUNDO CÓSMICO DINÂMICO (CANVAS DE ESTRELAS E NEBULOSAS)
      -------------------------------------------------------------------------- */
   function setupCosmicBackground() {
     const canvas = elements.starsCanvas;
@@ -736,7 +941,6 @@
     let width = (canvas.width = window.innerWidth);
     let height = (canvas.height = window.innerHeight);
 
-    // Cria constelação de partículas estelares
     const numStars = Math.min(220, Math.floor((width * height) / 6000));
     const stars = [];
 
@@ -754,14 +958,12 @@
     function renderStars() {
       ctx.clearRect(0, 0, width, height);
 
-      // Fundo espacial profundo com vinheta sutil
       const spaceGrad = ctx.createRadialGradient(width / 2, height / 2, width * 0.1, width / 2, height / 2, width * 0.8);
       spaceGrad.addColorStop(0, '#0a0e20');
       spaceGrad.addColorStop(1, '#05070e');
       ctx.fillStyle = spaceGrad;
       ctx.fillRect(0, 0, width, height);
 
-      // Desenha as estrelas piscantes
       stars.forEach(star => {
         star.alpha += Math.sin(Date.now() * star.twinkleSpeed) * 0.01;
         star.alpha = Math.max(0.15, Math.min(0.95, star.alpha));
@@ -787,7 +989,7 @@
   }
 
   /* --------------------------------------------------------------------------
-     13. PARALLAX INTERATIVO 3D NO CARD DA LUA (Feedback Tátil)
+     11. PARALLAX INTERATIVO 3D (FEEDBACK TÁTIL)
      -------------------------------------------------------------------------- */
   function setupParallaxEffect() {
     const wrapper = elements.moonCanvasWrapper;
@@ -809,105 +1011,144 @@
   }
 
   /* --------------------------------------------------------------------------
-     14. EVENTOS DE TECLADO E ACESSIBILIDADE
+     12. NAVEGAÇÃO POR TECLADO
      -------------------------------------------------------------------------- */
   function setupKeyboardNavigation() {
     window.addEventListener('keydown', (e) => {
-      // Ignorar caso o foco esteja em algum input futuro
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
 
-      switch (e.key) {
-        case 'ArrowRight':
-          e.preventDefault();
-          nextPhase();
-          break;
-        case 'ArrowLeft':
-          e.preventDefault();
-          prevPhase();
-          break;
-        case ' ':
-          e.preventDefault();
-          toggleAutoplay();
-          break;
-        case '1': case '2': case '3': case '4':
-        case '5': case '6': case '7': case '8':
-          e.preventDefault();
-          const targetIndex = parseInt(e.key, 10) - 1;
-          selectPhase(targetIndex);
-          break;
+      if (globalState.activeTab === 'viewer') {
+        switch (e.key) {
+          case 'ArrowRight':
+            e.preventDefault();
+            nextPhase();
+            break;
+          case 'ArrowLeft':
+            e.preventDefault();
+            prevPhase();
+            break;
+          case ' ':
+            e.preventDefault();
+            toggleAutoplay();
+            break;
+          case '1': case '2': case '3': case '4':
+          case '5': case '6': case '7': case '8':
+            e.preventDefault();
+            const targetIndex = parseInt(e.key, 10) - 1;
+            selectPhase(targetIndex);
+            break;
+        }
+      } else if (globalState.activeTab === 'simulator') {
+        switch (e.key) {
+          case ' ':
+            e.preventDefault();
+            if (simState.isRunning) {
+              pauseSimulation();
+            } else {
+              startSimulation();
+            }
+            break;
+          case 'r': case 'R':
+            e.preventDefault();
+            resetSimulation();
+            break;
+        }
       }
     });
   }
 
   /* --------------------------------------------------------------------------
-     15. INICIALIZAÇÃO DA APLICAÇÃO
+     13. INICIALIZAÇÃO DA APLICAÇÃO
      -------------------------------------------------------------------------- */
   function init() {
-    // 1. Configura canvas de fundo
+    // 1. Fundo cósmico
     setupCosmicBackground();
 
-    // 2. Constrói botões das 8 fases lunares (RF01 & RF03)
+    // 2. Constrói botões das 8 fases na Spec 1 (RF01 & RF03)
     buildInteractivePhaseButtons();
 
-    // 3. Renderiza fase inicial (Lua Nova) no canvas principal (RF02)
-    const initialPhase = LUNAR_PHASES[state.currentPhaseIndex];
-    state.currentRenderAngle = initialPhase.phaseAngle;
-    state.targetAngle = initialPhase.phaseAngle;
+    // 3. Renderiza fase inicial no visualizador (Spec 1)
+    const initialPhase = LUNAR_PHASES[viewerState.currentPhaseIndex];
+    viewerState.currentRenderAngle = initialPhase.phaseAngle;
+    viewerState.targetAngle = initialPhase.phaseAngle;
 
     const ctx = elements.moonCanvas.getContext('2d');
-    renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, state.currentRenderAngle, state.hemisphere, false);
+    renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, viewerState.currentRenderAngle, globalState.hemisphere, false);
     updatePhaseDetails(initialPhase);
 
-    // 4. Conecta Controles de Navegação
+    // 4. Inicializa o simulador na Lua Nova (Spec 2 - RF05, RF06, RF07)
+    updateSimulatorUI();
+
+    // 5. Conecta controles da Spec 1
     elements.btnPrevPhase.addEventListener('click', prevPhase);
     elements.btnNextPhase.addEventListener('click', nextPhase);
     elements.btnAutoplay.addEventListener('click', toggleAutoplay);
 
-    // 5. Conecta Seletor de Hemisfério
+    // 6. Conecta controles da Spec 2 (RF06 & RF08)
+    elements.simBtnPlay.addEventListener('click', startSimulation);
+    elements.simBtnPause.addEventListener('click', pauseSimulation);
+    elements.simBtnReset.addEventListener('click', resetSimulation);
+
+    elements.speedButtons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const speed = parseFloat(btn.dataset.speed);
+        setSimulationSpeed(speed);
+      });
+    });
+
+    // 7. Conecta abas de navegação
+    elements.tabBtnViewer.addEventListener('click', () => switchTab('viewer'));
+    elements.tabBtnSimulator.addEventListener('click', () => switchTab('simulator'));
+
+    // 8. Conecta Seletor de Hemisfério (afeta ambas as especificações)
     elements.btnHemiSouth.addEventListener('click', () => {
-      if (state.hemisphere === 'south') return;
-      state.hemisphere = 'south';
+      if (globalState.hemisphere === 'south') return;
+      globalState.hemisphere = 'south';
       elements.btnHemiSouth.classList.add('active');
       elements.btnHemiSouth.setAttribute('aria-pressed', 'true');
       elements.btnHemiNorth.classList.remove('active');
       elements.btnHemiNorth.setAttribute('aria-pressed', 'false');
 
-      // Re-renderiza o canvas principal e miniaturas com a ótica correta
-      renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, state.currentRenderAngle, state.hemisphere, false);
+      // Atualiza visualizador
+      renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, viewerState.currentRenderAngle, globalState.hemisphere, false);
       reRenderAllThumbnails();
-      updatePhaseDetails(LUNAR_PHASES[state.currentPhaseIndex]);
+      updatePhaseDetails(LUNAR_PHASES[viewerState.currentPhaseIndex]);
+
+      // Atualiza simulador
+      updateSimulatorUI();
     });
 
     elements.btnHemiNorth.addEventListener('click', () => {
-      if (state.hemisphere === 'north') return;
-      state.hemisphere = 'north';
+      if (globalState.hemisphere === 'north') return;
+      globalState.hemisphere = 'north';
       elements.btnHemiNorth.classList.add('active');
       elements.btnHemiNorth.setAttribute('aria-pressed', 'true');
       elements.btnHemiSouth.classList.remove('active');
       elements.btnHemiSouth.setAttribute('aria-pressed', 'false');
 
-      renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, state.currentRenderAngle, state.hemisphere, false);
+      renderLunarPhase(ctx, elements.moonCanvas.width, elements.moonCanvas.height, viewerState.currentRenderAngle, globalState.hemisphere, false);
       reRenderAllThumbnails();
-      updatePhaseDetails(LUNAR_PHASES[state.currentPhaseIndex]);
+      updatePhaseDetails(LUNAR_PHASES[viewerState.currentPhaseIndex]);
+
+      updateSimulatorUI();
     });
 
-    // 6. Conecta Botão de Som
+    // 9. Conecta Som
     elements.soundToggleBtn.addEventListener('click', () => {
-      state.soundEnabled = !state.soundEnabled;
-      elements.soundIcon.textContent = state.soundEnabled ? '🔊' : '🔇';
-      elements.soundToggleBtn.title = state.soundEnabled ? 'Desativar efeitos sonoros' : 'Ativar efeitos sonoros';
-      if (state.soundEnabled) {
+      globalState.soundEnabled = !globalState.soundEnabled;
+      elements.soundIcon.textContent = globalState.soundEnabled ? '🔊' : '🔇';
+      elements.soundToggleBtn.title = globalState.soundEnabled ? 'Desativar efeitos sonoros' : 'Ativar efeitos sonoros';
+      if (globalState.soundEnabled) {
         initAudio();
         playCelestialChime(660);
       }
     });
 
-    // 7. Efeitos táteis e atalhos de teclado
+    // 10. Efeitos táteis e teclado
     setupParallaxEffect();
     setupKeyboardNavigation();
   }
 
-  // Inicializa quando o DOM estiver pronto
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
   } else {
